@@ -54,6 +54,11 @@ input_tree = "OTUs-Tree.tre"                   #<--- CHANGE ACCORDINGLY !!!
 #' Please make sure that your name do not contain hyphens "-" as they will cause problems in the parsing of the names.
 group_name = "Diet"                            #<--- CHANGE ACCORDINGLY !!!
 
+#' Please give a vector of colors for plotting. 
+#' Please make sure it is one color for each group level (e.g. if there are two groups, two values)
+#' if colors = NA it will plot rainbow colors
+colors = c("#FF0000","goldenrod","green","blue")
+
 ##################################################################################
 ######                  Additional parameters                               ######
 ##################################################################################
@@ -147,6 +152,20 @@ tree_file$tip.label <- gsub("'", "", tree_file$tip.label)
 rooted_tree <- midpoint(tree_file)
 
 
+#########################       Check Colors      ##############################
+
+areColors <- function(x) {
+  sapply(x, function(X) {
+    tryCatch(is.matrix(col2rgb(X)), 
+             error = function(e) FALSE)
+  })
+}
+
+if (all(areColors(colors)) == FALSE) {
+  stop("colors has to be set to valid colors or NA")
+}
+
+
 ####################       Calculate beta-diversity          ###################
 
 # Create the directory where all output files are saved (is named after the target group name set above for comparisons)
@@ -169,7 +188,17 @@ all_fit <- hclust(all_dist_matrix, method = "ward.D2")
 # Generates a tree from the hierarchically generated object
 tree <- as.phylo(all_fit)
 my_tree_file_name <- paste(group_name,"/phylogram.pdf",sep="")
-plot_color<-rainbow(length(levels(all_groups)))[all_groups]
+
+# Set colors for plot
+if (!is.null(colors) & (length(colors) != length(levels(all_groups)))) {
+  stop("Please provide the same amount of colors as there are group levels")
+}
+
+if (all(is.na(colors))) {
+  plot_color<-rainbow(length(levels(all_groups)))[all_groups]
+} else {
+  plot_color<- colors[all_groups]
+}
 
 # Save the generated phylogram in a pdf file
 pdf(my_tree_file_name)
@@ -231,6 +260,13 @@ dev.off()
 # Calculate the pairwise significance of variance for group pairs
 # Get all groups contained in the mapping file
 unique_groups <- levels(all_groups_comp)
+
+if (all(is.na(colors))) {
+  comp_plot_color<-rainbow(length(levels(all_groups_comp)))
+} else {
+  comp_plot_color<- colors
+}
+
 if (dim(table(unique_groups)) > 2) {
   
   # Initialise vector and lists
@@ -312,7 +348,7 @@ if (dim(table(unique_groups)) > 2) {
       meta <- metaMDS(pairedMatrixList[[i]], k = 2)
       s.class(
         meta$points,
-        col = rainbow(length(levels(all_groups_comp))), cpoint = 2,
+        col = comp_plot_color, cpoint = 2,
         fac = as.factor(all_groups_comp[all_groups_comp == pair_1_list[i] |
                                           all_groups_comp == pair_2_list[i]]),
         sub = paste("NMDS plot of Microbial Profiles\n ",pair_1_list[i]," - ",pair_2_list[i], "\n PERMDISP     p=",permdisppval[[i]],",","  p.adj=", permdisppval_BH[i],"\n",
@@ -330,7 +366,7 @@ if (dim(table(unique_groups)) > 2) {
     if (nrow(pairedMatrixList[[i]])>2){
       # Calculate and display the MDS plot (Multidimensional Scaling plot)
       s.class(
-        cmdscale(pairedMatrixList[[i]], k = 2), col = rainbow(length(levels(all_groups_comp))), cpoint =
+        cmdscale(pairedMatrixList[[i]], k = 2), col = comp_color_palette, cpoint =
           2, fac = as.factor(all_groups_comp[all_groups_comp == pair_1_list[i] |
                                                all_groups_comp == pair_2_list[i]]), 
         sub = paste("MDS plot of Microbial Profiles\n ",pair_1_list[i]," - ",pair_2_list[i], "\n PERMDISP     p=",permdisppval[[i]],",","  p.adj=", permdisppval_BH[i],"\n",
